@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Posts on 🐘⭐🎈</title><link>https://elephantstarballoon.com/post/</link><description>Recent content in Posts on 🐘⭐🎈</description><generator>Hugo -- 0.145.0</generator><language>en-us</language><lastBuildDate>Fri, 21 Mar 2025 08:00:00 -0800</lastBuildDate><atom:link href="https://elephantstarballoon.com/post/index.xml" rel="self" type="application/rss+xml"/><item><title>Spacial Indexing: The Adaptive Hash Grid Algorithm</title><link>https://elephantstarballoon.com/post/ahgrid/</link><pubDate>Fri, 21 Mar 2025 08:00:00 -0800</pubDate><guid>https://elephantstarballoon.com/post/ahgrid/</guid><description>&lt;p>I&amp;rsquo;ve been exploring spatial indexing lately, trying to balance performance and
 simplicity in scenarios where objects of varying sizes need to be indexed and
-queried quickly. This led me to experiment with what I&amp;rsquo;m calling an &lt;strong>Adaptive
-Hash Grid&lt;/strong> (AHGrid). It may not be entirely novel, but I think it&amp;rsquo;s an
-interesting approach to tackling a few common challenges. I&amp;rsquo;ve combined ideas
-from a few other algorithms to make this work.&lt;/p></description></item></channel></rss>
+queried quickly. While looking at some of the available algorithms, I had an
+idea of my own. I&amp;rsquo;ve been searching for prior art to determine if this is a &amp;ldquo;new&amp;rdquo; idea, but
+haven&amp;rsquo;t found any yet. I&amp;rsquo;m sharing this approach to encourage feedback.&lt;/p>
+&lt;p>For the purpose of this article, I&amp;rsquo;m calling this an &lt;strong>Adaptive Hash Grid&lt;/strong>
+(AHGrid). It&amp;rsquo;s a twist on a few other existing algorithms. But I think it&amp;rsquo;s an
+interesting approach because of how simple the implementation winds up being.&lt;/p></description></item></channel></rss>
