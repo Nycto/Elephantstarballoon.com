@@ -2,3 +2,6 @@ baseURL = 'https://elephantstarballoon.com/'
 languageCode = 'en-us'
 title = '🐘⭐🎈'
 theme = 'PaperMod'
+
+[params]
+disableThemeToggle = true
