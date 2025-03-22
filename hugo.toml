@@ -5,3 +5,23 @@ theme = 'PaperMod'
 
 [params]
 disableThemeToggle = true
+
+[[menu.main]]
+name = 'Github'
+url = 'https://github.com/Nycto'
+weight = 10
+
+[[menu.main]]
+name = 'Mastadon'
+url = 'https://mstdn.games/@Nycto'
+weight = 20
+
+[[menu.main]]
+name = 'BlueSky'
+url = 'https://bsky.app/profile/jarmsicle.bsky.social'
+weight = 30
+
+[[menu.main]]
+name = 'Itch'
+url = 'https://elephantstarballoon.itch.io/'
+weight = 40
