@@ -4,15 +4,19 @@ title = 'Spacial Indexing: The Adaptive Hash Grid Algorithm'
 weight = 2
 +++
 
-I've been exploring spatial indexing lately, trying to balance performance and
-simplicity in scenarios where objects of varying sizes need to be indexed and
-queried quickly. While looking at some of the available algorithms, I had an
-idea of my own. I've been searching for prior art to determine if this is a "new" idea, but
-haven't found any yet. I'm sharing this approach to encourage feedback.
+I've been exploring spatial indexing lately, trying to find a balance
+performance and simplicity. While looking at the Hierarchical Spacial Grid Hash
+algorithm, I had a thought about how to combine its layering system with a flat
+spatial hash. I've been searching for prior art to determine if this is a "new"
+idea, but haven't found any yet. I'm sharing this approach to collect feedback.
 
-For the purpose of this article, I'm calling this an **Adaptive Hash Grid**
-(AHGrid). It's a twist on a few other existing algorithms. But I think it's an
-interesting approach because of how simple the implementation winds up being.
+For the purpose of this article, I'm calling this the **Adaptive Hash Grid**
+algorithm (`AHGrid`). As I said, it's a twist on a spatial hash that
+incorporates the size of the object into the hash key generation. The benefit is
+that objects in an `AHGrid` will only ever be stored in a single cell within the
+grid, which simplifies the process of queries and updates. It's also capable of
+easily storing objects of varying size spread out across a basically unbound
+space (`low(int32)..high(int32)`).
 
 ## The Problem with Traditional Grids
 
@@ -21,17 +25,16 @@ hit a familiar problem: What happens when an object spans multiple cells?
 
 Imagine a grid where each cell is exactly `10 units` wide and `10 units` tall.
 If you insert an object that is 15x15 into that grid, it will overlap multiple
-cells, forcing you to register the object with each cell it overlaps. When
-querying for nearby objects, you have to check all four cells and deduplicate any
+cells, forcing you to register the object with each cell it overlaps.
+
+![ahgrid layers](/ahgrid/grid-overlap.svg)
+
+When querying for nearby objects, you have to check all four cells and deduplicate any
 results if they straddle multiple cells. Querying for neighbors can quickly
 balloon to searching through dozens of cells.
 
 Quadtrees and Hierarchical Spatial Hash Grids have the same problem as a classical
-fixed size grid -- they all require storing an object in all the cells that it overlaps.
-This is because the edges between cells are fixed.
-
-I also wanted a system that could represent objects of wildly varying size spread
-out across a basically unbound space (`low(int32)..high(int32)`).
+fixed size grid -- they require storing an object in all the cells that it overlaps.
 
 ## Adaptive Hashing Grid
 
@@ -42,40 +45,52 @@ using a calculated index to colocate objects that are nearby:
 Table[CellIndex, seq[T]]
 ```
 
-The difference with `AHGrid` is the way the `CellIndex` is calculated. For a 2D grid,
-`AHGrid` incorporates the `x` and `y` coordinates, but also adds a concept of a `scale`:
+In a regular spacial hash, `CellIndex` above would essentially be:
 
 ```nim
-type CellIndex = tuple[x, y, scale: int32]
+type CellIndex = tuple[xBucket, yBucket: int32]
+  ## CellIndex for a regular spatial hash grid
+
+proc cellIndexForSpatialHash(x, y: int32): CellIndex =
+  return (xBucket: x div cellSize, yBucket: y div cellSize)
 ```
 
-The `scale` property encodes the size of the object rounded up to the next power of two.
-You can think of it being calculated in the following way:
+`AHGrid` also uses an `xBucket` and `yBucket`, but then adds a concept of `scale`:
+
+```nim
+type CellIndex = tuple[xBucket, yBucket, scale: int32]
+  ## CellIndex for an AHGrid
+```
+
+The `scale` property holds the size of the object, rounded up to the next power of two.
+The calculation for the scale is exactly what you would expect:
 
 ```nim
 proc calculateScale(width, height: int32): int32 =
   max(width, height).int.nextPowerOfTwo.int32
 ```
 
-This means that an `AHGrid` secretly has multiple layers that are transparently
-overlaid within the same `Table`. Each new value for `scale` constitutes a new
-layer. For each layer, the size of the cells it contains is 2x as
-big as the previous layer. This is very similar to how a Hierarchical Spatial
-Hash Grid works in concept, but flattened into a single storage container.
+This create an important property of an `AHGrid`: there are multiple layers
+transparently overlaid within the same `Table`. Each new value for `scale`
+constitutes a new layer. For each layer, the scale is twice as big as the
+previous layer, so it can contain objects that are twice as big. This is very
+similar to how a Hierarchical Spatial Hash Grid works in concept, but flattened
+into a single storage container.
 
-The next twist that an `AHGrid` adds is that every layer offsets its root
-coordinate by half its size. This leads to a very important property: adjacent
-layers don't share the same edges between cells. Put another way, the boundaries
-between each layer are always at an offset from the layer beneath it. In one
-dimensional space, that looks like this:
+The next twist is that every layer in an `AHGrid` offsets its root coordinate by
+half its size. This leads to a very important property: adjacent layers don't
+usually share the same edges between cells. Put another way, the boundaries
+between each cell in a layer are always at an offset from the layer beneath it.
+In one dimensional space, that looks like this:
 
 ![ahgrid layers](/ahgrid/scales.svg)
 
 This offset is what allows us to put an object into exactly one cell -- if an
 object overlaps an edge in one layer, we just need to bump up to the next layer.
-Being in one cell allows queries to be more efficient, as we don't have to worry
-about deduplicating the results. We know that we can blindly yield all the values
-within the cell without tracking what has already been returned.
+
+Being in one cell allows queries and updates to be more efficient, as we don't
+have to worry about deduplicating the results. We know that we can blindly emit
+all the values within a cell without tracking what has already been returned.
 
 Let's walk through the insertion process to see how this works.
 
@@ -90,20 +105,22 @@ Above, the object is `3 units` wide at an offset of `3`. We can immediately choo
 initial `scale` by bumping the size up to the next power of 2, which puts us at a scale
 of `4`. And because the object fits entirely within the cell from `2` to `5`, we're done.
 
-However, if we do the above operation the object overlaps the edge of its cell, we move
-up to the next layer until we find one where the object doesn't overlap the boundaries.
-You can see the same object as below, but this time it has an offset of `4`. That puts the
-right edge over the boundary of the cell of scale 4:
+However, if we do the above operation and the object overlaps the edge of its
+destination cell, we need to keep working. To ensure it fits in exactly one
+cell, we move up to the next layer until we find a cell where the object doesn't
+overlap the boundaries.
 
 ![ahgrid layers](/ahgrid/insert-bumped.svg)
 
-In this case, we can bump the scale up to `8` and the object now fits entirely within
-a single cell at the next layer up.
+In the image above, you can see the same object as before, but this time it has
+an offset of `4`. That puts the right edge over the right side boundary of the
+cell. In this case, we can bump the scale up to `8` and the object now fits
+entirely within a single cell.
 
 ### In code
 
-To see how this works, lets look at the implementation. Imagine we want to insert a 2D object
-with `x`, `y`, `width` and `height` parameters:
+Lets look at the code for this. Imagine we want to insert a 2D object with `x`,
+`y`, `width` and `height` parameters:
 
 ```nim
 type
@@ -116,20 +133,22 @@ type
 
 **First**, we choose the smallest layer that best fits this object. Because the cell size for
 each layer is a power of 2, we just need to find the next power of two based on the maximum
-width or height. This is the same code you saw above:
+width or height. That's the function we already showed above:
 
 ```nim
-var scale = max(obj.width, obj.height).int.nextPowerOfTwo.int32
+var scale = calculateScale(obj.width, obj.height)
 ```
 
-**Second**, we independently examine the `x` and `y` coordinates and choose the cell index
-that the object would fall into. This looks the same for both `x` and `y`, so we can create
-a function that operates on a single coordinate at a time. In a Hierarchical Spatial Hash Grid,
-this would just be `coord div scale`. But because we need to offset the root
-coordinate for each layer by half the scale, we need to get a bit fancier:
+**Second**, we examine the `x` and `y` coordinates and independently choose a
+cell index for each. This is basic bucketing -- and it the same for both `x` and `y`, so we
+can create a general function that works for both.
+
+In a Hierarchical Spatial Hash Grid, this would just be `coord div scale`. But
+because we need to offset the root coordinate for each layer by half the scale,
+we need to get a bit fancier:
 
 ```nim
-proc cellIndex(coord, scale: int32): int32 =
+proc chooseBucket(coord, scale: int32): int32 =
   let half = scale div 2
   # We need to specifically adjust the index to handle negative coordinates. This
   # looks funky because we also have to deal with the shifting root coordinates
@@ -139,16 +158,16 @@ proc cellIndex(coord, scale: int32): int32 =
 
 **Third**, we make sure the object we're processing fits entirely within the
 cell we've picked. If it doesn't, then we need to increase the `scale` of the
-cell until the object fits entirely within it.
+cell until the object can be fully contained by a single cell.
 
 ```nim
 proc pickCellIndex(grid: AHGrid, x, y, width, height: int32): CellIndex =
-  var scale = max(width, height).int.nextPowerOfTwo.int32
+  var scale = calculateScale(width, height)
   while true:
-    let output = (x: x.cellIndex(scale), y: y.cellIndex(scale), scale: scale)
+    let output = (xBucket: x.chooseBucket(scale), yBucket: y.chooseBucket(scale), scale: scale)
 
     # Ensure the object fits entirely within the cell
-    if x + width < output.x + scale and y + height < output.y + scale:
+    if x + width < output.xBucket + scale and y + height < output.yBucket + scale:
         return output
 
     # If it doesn't, try fitting the object into the next layer up
@@ -160,8 +179,8 @@ the entire object.
 
 ## Storage and Inserting
 
-As the name of the algorithm would imply, the values being indexed are stored in a table.
-All the values with the same `CellIndex` are stored together, as they, by definition,
+As already mentioned, the object being indexed are stored in a table of lists. All the
+values with the same `CellIndex` are stored together, as they -- by definition --
 are near each other. It looks like this:
 
 ```nim
@@ -172,7 +191,8 @@ type
 ```
 
 Notice that we also need to store the `maxScale`. That's in there so that queries know
-how many layers they need to query before stopping.
+how many layers they need to query before stopping. Any time we insert an object, we need
+to update that `maxScale`
 
 With the type definition above, inserting an object can be done in linear time:
 
@@ -185,13 +205,15 @@ proc insert*[T](grid: var AHGrid[T], obj: T) =
 
 ## Querying at a point
 
-To now find all the objects that are near a given point, we can implement a query by
-calculating the `CellIndex` for each `scale` within the grid. Visually, if you wanted
-to query for anything that exists at the 1d coordinate `8`, it would look like this:
+To find all the objects that are near a given point, we can implement a query by
+calculating the `CellIndex` for each `scale` within the grid at the point of
+interest. Visually, if you wanted to query for anything that exists at the 1d
+coordinate `8`, it would look like this:
 
 ![query at point](/ahgrid/query-point.svg)
 
-In code, that looks like:
+In the chart above, we would visit every cell at every layer that intersects with
+the dashed line. In code, that looks like:
 
 ```nim
 iterator eachScale(grid: AHGrid): int32 =
@@ -212,23 +234,25 @@ This dynamic scaling adapts smoothly to the size and spread of the data, minimiz
 ## Querying with a radius
 
 Within game development, it's common to need to know everything that is within
-a radius of a specific point. For example, finding all the enemies that might
+a specific radius of a given point. For example, finding all the enemies that might
 be impacted by an explosion.
 
-To handle this use case, we can add a radius to our `find` iterator.  This requires
-doing a search for every `CellIndex` that is within the radius of the search point:
+To handle this use case, we can add a radius to our query.  This requires doing
+a search for every `CellIndex` that is within the radius of the search point:
 
 ![query at point](/ahgrid/query-range.svg)
 
-In code, that looks like:
+Again, we would need to visit every cell that intersects with or is between the
+two dashed lines above. In code, that looks like:
 
 ```nim
 iterator eachCellIndex(x, y, radius, scale: int32): CellIndex =
-  let xRange = cellIndex(x - radius, scale)..cellIndex(x + radius, scale)
-  let yRange = cellIndex(y - radius, scale)..cellIndex(y + radius, scale)
+  ## Yields each cell key within a given radius of a point at the given scale
+  let (xLow, xHigh) = (chooseBucket(x - radius, scale), chooseBucket(x + radius, scale))
+  let (yLow, yHigh)= (chooseBucket(y - radius, scale), chooseBucket(y + radius, scale))
 
-  for x in countup(xRange.a, xRange.b, scale):
-    for y in countup(yRange.a, yRange.b, scale):
+  for x in countup(xLow, xHigh, scale):
+    for y in countup(yLow, yHigh, scale):
       yield (x, y, scale)
 
 iterator find*[T](grid: AHGrid[T]; x, y, radius: int32): T =
@@ -238,17 +262,23 @@ iterator find*[T](grid: AHGrid[T]; x, y, radius: int32): T =
         yield obj
 ```
 
-## Optimizing usage
+## Further Optimizations
 
-To make the most of the AHGrid approach, there are a few optimization strategies to consider:
+Beyond what is described here, there are a few optimization strategies that need
+further exploration:
 
 * Initial Sizing for Hash Tables and Lists
 
   When initializing your hash tables and nested lists, it’s helpful to estimate
   the number of cells and objects you expect to store. By pre-allocating space
-  in your hash table and object lists, you can avoid costly reallocations as the
-  data grows. If you expect a large, sparse distribution of data, you may want
-  to use a more aggressive initial capacity for the hash table.
+  in the hash table and object lists, you can avoid costly reallocations as the
+  data grows.
+
+* Skip the hash table entirely
+
+  Technically, we don't even need a `Table`. We could use an array of arrays
+  and do the index management ourselves. This would let us guarantee that we never
+  have to deal with table resizing.
 
 * Adding a Minimum Scale (`minScale`)
 
@@ -259,48 +289,19 @@ To make the most of the AHGrid approach, there are a few optimization strategies
   increasing the cost of each lookup. If it’s too large, you lose the
   granularity and benefits of a spatial index.
 
-* Skip the hash table entirely
-
-  Technically, we don't even need a `Table`. We could use an array of arrays
-  and do the index management ourselves. This would let us guarantee that we never
-  have to deal with table resizing.
-
 * Use a `HashSet` instead of a `seq`
 
   In the example code, I'm using a `Table` that contains a `seq`. One possible
-  optimization would be using a set instead. Thought I didn't discuss removal
-  in this article, using a set would potentially make that operation faster.
-
-## Alternate Approaches and Comparisons
-
-While the Adaptive Hash Grid has proven effective for my needs, it's helpful to
-understand how it compares to other spatial hashing techniques. Here are a few
-common approaches:
-
-* Fixed-Size Grids: These are simple to implement but suffer from overlapping
-  issues when objects span multiple cells. They also struggle with varying
-  object sizes or non-uniformly distributed data.
-* Quadtrees: Quadtrees dynamically divide space, making them suitable for varied
-  object sizes. However, they can become unbalanced with irregular data
-  distributions and often require complicated balancing or depth-limited
-  optimizations.
-* Hierarchical Spatial Hash Grids: These are more flexible than fixed grids,
-  leveraging multiple levels of granularity. However, objects still overlap
-  cells across levels, necessitating deduplication during querying.
-
-Adaptive Hash Grid strikes a balance between these approaches. By adjusting
-cell sizes dynamically while maintaining a flat hash table, AHGrid reduces
-overlaps, minimizes query time, and simplifies implementation.
+  optimization would be using a `HashSet` instead. Though I didn't discuss the
+  `remove` or `update` operations in this article, using a set would potentially
+  make those operations faster.
 
 ## Strengths
 
 - **Simplicity:** Uses a flat hash table — no deep tree traversals, no rebalancing. This
   algorithm is _really_ easy to implement
-- **Adaptability:** Supports objects of any size within a single cell.
-- **Efficient Queries:** No deduplication needed due to unique cell assignment.
-- **Infinite Space:** Because we're using a hash table to store the data, we can store
-  two objects that are at opposite ends of a grid as efficiently as storing two that
-  are close together
+- **Adaptability:** Supports objects of any size at any position
+- **Efficient Queries:** No deduplication needed due to unique cell assignments
 
 ## Weaknesses
 
@@ -310,10 +311,11 @@ overlaps, minimizes query time, and simplifies implementation.
   structure, the cache efficiency might be lower.
 
 * **Large Query Radii:** A large query radius is going to cause a lot of cells
-  to be visited, reducing efficiency. This could be a bigger issue if large queries are frequent
+  to be visited, reducing efficiency. This could be a bigger issue if large
+  queries are frequent
 
 * **Integer only:** This implementation relies on a lot of integer based math and
-  doesn't really work for floats. Any usage would first need to convert a float into
+  doesn't really work for floats. Any usage would first need to convert a float to
   an int. This is trivial with a fixed point system, though.
 
 * **Scaling Factor Sensitivity:** Choosing the right `minScale` is crucial. If the scaling
@@ -324,7 +326,7 @@ overlaps, minimizes query time, and simplifies implementation.
 
 There are certainly some improvements and extensions that can be made to this implementation.
 For example, being able to remove objects or update them in place. Supporting 3D objects, too.
-Those are all fairly trivial changes, though.
+Those should be fairly straight forward.
 
 I've been using this for Game development, where I need to quickly and dynamically
 index a large number of game entities -- it has worked well so far!
