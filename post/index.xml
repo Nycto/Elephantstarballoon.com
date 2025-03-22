@@ -3,6 +3,8 @@ simplicity in scenarios where objects of varying sizes need to be indexed and
 queried quickly. While looking at some of the available algorithms, I had an
 idea of my own. I&amp;rsquo;ve been searching for prior art to determine if this is a &amp;ldquo;new&amp;rdquo; idea, but
 haven&amp;rsquo;t found any yet. I&amp;rsquo;m sharing this approach to encourage feedback.&lt;/p>
-&lt;p>For the purpose of this article, I&amp;rsquo;m calling this an &lt;strong>Adaptive Hash Grid&lt;/strong>
-(AHGrid). It&amp;rsquo;s a twist on a few other existing algorithms. But I think it&amp;rsquo;s an
-interesting approach because of how simple the implementation winds up being.&lt;/p></description></item></channel></rss>
+&lt;p>For the purpose of this article, I&amp;rsquo;m calling it the &lt;strong>Adaptive Hash Grid&lt;/strong> algorithm
+(&lt;code>AHGrid&lt;/code>). It&amp;rsquo;s a twist on a spatial hash that simplifies the query process by
+incorporating the size of the object into the hash key generation. Objects in an &lt;code>AHGrid&lt;/code>
+will only ever be stored in a single cell within the grid, which simplifies the process
+of queries and updates.&lt;/p></description></item></channel></rss>
