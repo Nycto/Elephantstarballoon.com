@@ -1,10 +1,12 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>🐘⭐🎈</title><link>https://elephantstarballoon.com/</link><description>Recent content on 🐘⭐🎈</description><generator>Hugo -- 0.145.0</generator><language>en-us</language><lastBuildDate>Fri, 21 Mar 2025 08:00:00 -0800</lastBuildDate><atom:link href="https://elephantstarballoon.com/index.xml" rel="self" type="application/rss+xml"/><item><title>Spacial Indexing: The Adaptive Hash Grid Algorithm</title><link>https://elephantstarballoon.com/post/ahgrid/</link><pubDate>Fri, 21 Mar 2025 08:00:00 -0800</pubDate><guid>https://elephantstarballoon.com/post/ahgrid/</guid><description>&lt;p>I&amp;rsquo;ve been exploring spatial indexing lately, trying to balance performance and
-simplicity in scenarios where objects of varying sizes need to be indexed and
-queried quickly. While looking at some of the available algorithms, I had an
-idea of my own. I&amp;rsquo;ve been searching for prior art to determine if this is a &amp;ldquo;new&amp;rdquo; idea, but
-haven&amp;rsquo;t found any yet. I&amp;rsquo;m sharing this approach to collect feedback.&lt;/p>
-&lt;p>For the purpose of this article, I&amp;rsquo;m calling it the &lt;strong>Adaptive Hash Grid&lt;/strong>
-algorithm (&lt;code>AHGrid&lt;/code>). It&amp;rsquo;s a twist on a spatial hash that incorporates the size
-of the object into the hash key generation. Objects in an &lt;code>AHGrid&lt;/code> will only
-ever be stored in a single cell within the grid, which simplifies the process of
-queries and updates.&lt;/p></description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>🐘⭐🎈</title><link>https://elephantstarballoon.com/</link><description>Recent content on 🐘⭐🎈</description><generator>Hugo -- 0.145.0</generator><language>en-us</language><lastBuildDate>Fri, 21 Mar 2025 08:00:00 -0800</lastBuildDate><atom:link href="https://elephantstarballoon.com/index.xml" rel="self" type="application/rss+xml"/><item><title>Spacial Indexing: The Adaptive Hash Grid Algorithm</title><link>https://elephantstarballoon.com/post/ahgrid/</link><pubDate>Fri, 21 Mar 2025 08:00:00 -0800</pubDate><guid>https://elephantstarballoon.com/post/ahgrid/</guid><description>&lt;p>I&amp;rsquo;ve been exploring spatial indexing lately, trying to find a balance
+performance and simplicity. While looking at the Hierarchical Spacial Grid Hash
+algorithm, I had a thought about how to combine its layering system with a flat
+spatial hash. I&amp;rsquo;ve been searching for prior art to determine if this is a &amp;ldquo;new&amp;rdquo;
+idea, but haven&amp;rsquo;t found any yet. I&amp;rsquo;m sharing this approach to collect feedback.&lt;/p>
+&lt;p>For the purpose of this article, I&amp;rsquo;m calling this the &lt;strong>Adaptive Hash Grid&lt;/strong>
+algorithm (&lt;code>AHGrid&lt;/code>). As I said, it&amp;rsquo;s a twist on a spatial hash that
+incorporates the size of the object into the hash key generation. The benefit is
+that objects in an &lt;code>AHGrid&lt;/code> will only ever be stored in a single cell within the
+grid, which simplifies the process of queries and updates. It&amp;rsquo;s also capable of
+easily storing objects of varying size spread out across a basically unbound
+space (&lt;code>low(int32)..high(int32)&lt;/code>).&lt;/p></description></item></channel></rss>
