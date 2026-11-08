@@ -3,6 +3,21 @@
 
 ---
 
+{{< right-img src=/factory-override.png >}}
+
+## Factory Override
+
+Factory Override is a crank-driven tower defense game for the Playdate console.
+A factory built to automate industrial production has become self-aware, and
+its robots have turned against their creators. Push deeper into the factory,
+deploying turrets and emitters along the walls and using the crank to aim them
+in real time, as you fight through 20 maps across four zones to reach the
+server core at the heart of the machine.
+
+{{< vimeo-video 1244774880 "Factory Override trailer" >}}
+
+---
+
 {{< right-img src=/the-long-arc.gif >}}
 
 ## The Long Arc
